@@ -12,13 +12,17 @@ st.title("Hệ thống Luyện nghe TOEIC - Ms. Thục")
 # Yêu cầu file keys.json đặt cùng thư mục với app.py 
 # (Khi đẩy lên mạng sẽ dùng st.secrets, tôi có ghi chú ở cuối bài)
 @st.cache_resource
+@st.cache_resource
 def init_connection():
+    import json
     scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+    
+    # Lấy chìa khóa bảo mật từ Streamlit Secrets
+    key_dict = json.loads(st.secrets["google_json"])
+    creds = Credentials.from_service_account_info(key_dict, scopes=scope)
     client = gspread.authorize(creds)
     
-    # THAY LINK GOOGLE SHEETS CỦA BẠN VÀO ĐÂY
-    sheet_url = "https://docs.google.com/spreadsheets/d/THAY_ID_CUA_BAN_VAO_DAY/edit" 
+    sheet_url = "hoanha54cnmt@app-luyen-nghe.iam.gserviceaccount.com" 
     doc = client.open_by_url(sheet_url)
     return doc
 

@@ -58,7 +58,8 @@ if ma_de:
             records = sheet_khode.get_all_values()
             found_links = []
             for row in records:
-                if row[0].strip() == ma_de:
+                # Kiểm tra xem dòng đó có dữ liệu không rồi mới đọc Cột A
+                if len(row) > 0 and row[0].strip() == ma_de:
                     # Lấy các link từ cột B trở đi, bỏ qua các ô trống
                     found_links = [link.strip() for link in row[1:] if link.strip() != ""]
                     break

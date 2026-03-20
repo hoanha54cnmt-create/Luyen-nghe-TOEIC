@@ -31,7 +31,7 @@ try:
     sheet_khode = doc.worksheet("KhoDe")
     sheet_dulieutho = doc.worksheet("DuLieuTho")
 except Exception as e:
-    st.error("Không thể kết nối đến Google Sheets. Vui lòng kiểm tra lại file keys.json và link Sheet.")
+    st.error(f"Lỗi chi tiết: {e}")
     st.stop()
 
 # --- 3. THÔNG TIN HỌC VIÊN ---

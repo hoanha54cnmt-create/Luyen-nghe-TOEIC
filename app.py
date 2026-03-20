@@ -22,7 +22,7 @@ def init_connection():
     creds = Credentials.from_service_account_info(key_dict, scopes=scope)
     client = gspread.authorize(creds)
     
-    sheet_url = "hoanha54cnmt@app-luyen-nghe.iam.gserviceaccount.com" 
+    sheet_url = "https://docs.google.com/spreadsheets/d/1JHynbU_LDlCfPi6budsjOlTa9Hv4zDrajT3CijJilno/edit?gid=931055085#gid=931055085" 
     doc = client.open_by_url(sheet_url)
     return doc
 

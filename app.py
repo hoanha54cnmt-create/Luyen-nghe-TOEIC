@@ -43,7 +43,7 @@ st.caption("🔴 *Lưu ý: Vui lòng nhập đúng chuẩn Họ và Tên đầy 
 
 # --- 4. TRA CỨU MÃ ĐỀ ---
 st.subheader("2. Bài tập luyện nghe")
-ma_de = st.text_input("Nhập Mã đề (Ví dụ: Tuan1):").strip()
+ma_de = st.selectbox("Chọn Mã đề:", ["6U"])
 
 # Khởi tạo Session State để lưu trữ dữ liệu
 if "audio_links" not in st.session_state:

@@ -11,16 +11,22 @@ st.markdown("**Bản quyền thuộc về lớp học Ms. Thục TOEIC**")
 st.markdown("---")
 
 # ==========================================
-# --- 2. KẾT NỐI GOOGLE SHEETS ---
-# Yêu cầu file keys.json đặt cùng thư mục với app.py 
-# (Khi đẩy lên mạng sẽ dùng st.secrets, tôi có ghi chú ở cuối bài)
-@st.cache_resource
-@st.cache_resource
-def init_connection():
-    import json
-    scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+# 2. KẾT NỐI GOOGLE SHEETS
+# ==========================================
+# Cấp quyền truy cập cho hệ thống
+scopes = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 
-# ĐIỀN ĐƯỜNG LINK HOẶC ID FILE GOOGLE SHEETS CỦA BẠN VÀO ĐÂY:
+# Đọc chìa khóa bảo mật từ cài đặt của Streamlit
+skey = st.secrets["gcp_service_account"]
+credentials = Credentials.from_service_account_info(skey, scopes=scopes)
+
+# Khởi tạo "Robot" kết nối mang tên gc
+gc = gspread.authorize(credentials)
+
+# Mở file Google Sheets của Ms. Thục (Đã chèn đúng link của bạn)
 doc = gc.open_by_url("https://docs.google.com/spreadsheets/d/1JHynbU_LDlCfPi6budsjOlTa9Hv4zDrajT3CijJilno/edit?usp=sharing") 
 
 # ==========================================

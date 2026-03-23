@@ -1,6 +1,7 @@
 import streamlit as st
 import gspread
-from google.oauth2.service_account import Credentials
+import json
+# (Nếu code cũ của bạn có import thêm thư viện nào, hãy dán lên đây)
 
 # ==========================================
 # 1. CÀI ĐẶT GIAO DIỆN TRANG WEB
@@ -11,43 +12,33 @@ st.markdown("**Bản quyền thuộc về lớp học Ms. Thục TOEIC**")
 st.markdown("---")
 
 # ==========================================
-# 2. KẾT NỐI GOOGLE SHEETS
+# 2. KẾT NỐI GOOGLE SHEETS (BẢN GỐC CỦA BẠN)
 # ==========================================
-# Cấp quyền truy cập cho hệ thống
-scopes = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
+# 👇👇👇 BẠN HÃY DÁN NGUYÊN SI ĐOẠN CODE KẾT NỐI CŨ ĐÃ TỪNG CHẠY ĐƯỢC VÀO ĐÂY 👇👇👇
 
-# Đọc chìa khóa bảo mật từ cài đặt của Streamlit
-skey = st.secrets["gcp_service_account"]
-credentials = Credentials.from_service_account_info(skey, scopes=scopes)
 
-# Khởi tạo "Robot" kết nối mang tên gc
-gc = gspread.authorize(credentials)
 
-# Mở file Google Sheets của Ms. Thục (Đã chèn đúng link của bạn)
-doc = gc.open_by_url("https://docs.google.com/spreadsheets/d/1JHynbU_LDlCfPi6budsjOlTa9Hv4zDrajT3CijJilno/edit?usp=sharing") 
+# 👆👆👆 ======================================================================= 👆👆👆
+
+# Đảm bảo file Excel được mở đúng link này (Biến doc phải khớp với code cũ của bạn)
+doc = gc.open_by_url("https://docs.google.com/spreadsheets/d/1JHynbU_LDlCfPi6budsjOlTa9Hv4zDrajT3CijJilno/edit?usp=sharing")
 
 # ==========================================
 # 3. CỔNG 1: KHAI BÁO DANH TÍNH & BẢO MẬT
 # ==========================================
 lop_hoc = st.selectbox("Chọn Lớp học của bạn:", ["246", "357"])
 
-# Hàm tự động chui vào tab "Hocvien" để kiểm tra danh sách
-@st.cache_data(ttl=600) # Lưu bộ nhớ đệm 10 phút để web chạy nhanh
+@st.cache_data(ttl=600)
 def lay_danh_sach_hoc_vien(lop_chon):
     try:
         sheet_hv = doc.worksheet("Hocvien")
         records = sheet_hv.get_all_values()
         danh_sach = []
-        for row in records[1:]: # Bỏ qua dòng tiêu đề
+        for row in records[1:]:
             if len(row) >= 3:
                 lop_trong_sheet = row[0].strip()
                 ten_trong_sheet = row[1].strip()
                 trang_thai = row[2].strip()
-                
-                # Chỉ lấy những bạn đúng lớp và đang học
                 if lop_trong_sheet == lop_chon and trang_thai == "Đang học":
                     danh_sach.append(ten_trong_sheet.lower())
         return danh_sach
@@ -60,32 +51,27 @@ ten_nhap_vao = st.text_input("Nhập chính xác Họ và Tên của bạn:")
 if ten_nhap_vao:
     ten_kiem_tra = ten_nhap_vao.strip().lower()
     
-    # KỂ TỪ ĐÂY: CHỈ NHỮNG AI NHẬP ĐÚNG TÊN MỚI THẤY ĐƯỢC ĐỀ THI
     if ten_kiem_tra in danh_sach_hop_le:
         st.success(f"✅ Xác thực thành công! Chào mừng **{ten_nhap_vao.title()}**.")
         st.markdown("---")
 
         # ==========================================
-        # 4. CỔNG 2: CHỌN ĐỀ TỰ ĐỘNG THEO LỚP
+        # 4. CHỌN ĐỀ TỰ ĐỘNG
         # ==========================================
         if lop_hoc == "246":
-            danh_sach_de = ["6U", "De1", "De2"] # Bạn sửa lại tên đề lớp 246 ở đây
+            danh_sach_de = ["6U", "De1", "De2"]
         else:
-            danh_sach_de = ["6U", "Test1", "Test2"] # Bạn sửa lại tên đề lớp 357 ở đây
+            danh_sach_de = ["6U", "Test1", "Test2"]
 
         ma_de_chon = st.selectbox("Chọn Mã đề:", danh_sach_de)
-        
-        # Ghép mã bí mật để đi tìm (Ví dụ: 246-6U)
         ma_bi_mat = f"{lop_hoc}-{ma_de_chon}"
 
-        # Hàm chui vào tab "KhoDe" rút link âm thanh ra
         def lay_link_audio(ma_tim_kiem):
             sheet_khode = doc.worksheet("KhoDe")
             danh_sach_dong = sheet_khode.get_all_values()
             links = []
             for row in danh_sach_dong:
                 if row[0].strip() == ma_tim_kiem:
-                    # Lấy link từ Cột C (vị trí số 2) trở đi
                     for cell in row[2:]:
                         if cell.strip() != "":
                             links.append(cell.strip())
@@ -98,19 +84,19 @@ if ten_nhap_vao:
             st.success(f"🎉 Đã tải đề thành công! (Gồm {len(found_links)} câu hỏi)")
             
             # ==========================================
-            # 5. CỔNG 3: TRẠM KIỂM TRA ÂM THANH (SOUND CHECK)
+            # 5. TRẠM KIỂM TRA ÂM THANH
             # ==========================================
             st.markdown("### 🎧 Bước 1: Kiểm tra âm thanh")
             st.info("Vui lòng nghe thử đoạn âm thanh dưới đây và điều chỉnh âm lượng thiết bị cho phù hợp.")
             
-            # BẠN DÁN LINK PHÁT TRỰC TIẾP ÂM THANH TEST CỦA BẠN VÀO ĐÂY:
+            # Link file test
             link_test = "https://drive.google.com/uc?export=download&id=ID_FILE_TEST_CUA_BAN"
             st.audio(link_test)
             
             da_nghe_ro = st.checkbox("✅ Tôi đã nghe rõ âm thanh và sẵn sàng làm bài!")
 
             # ==========================================
-            # 6. CỔNG 4: LÀM BÀI VÀ NỘP BÀI
+            # 6. LÀM BÀI VÀ NỘP BÀI
             # ==========================================
             if da_nghe_ro:
                 st.markdown("---")

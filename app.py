@@ -1,136 +1,141 @@
 import streamlit as st
 import gspread
-import json
-# (Nếu code cũ của bạn có import thêm thư viện nào, hãy dán lên đây)
+from google.oauth2.service_account import Credentials
+from datetime import datetime
+import time
 
-# ==========================================
-# 1. CÀI ĐẶT GIAO DIỆN TRANG WEB
-# ==========================================
-st.set_page_config(page_title="Hệ thống Luyện nghe - Ms.Thục TOEIC", page_icon="🎧", layout="centered")
-st.title("🎧 Hệ thống Luyện nghe TOEIC")
-st.markdown("**Bản quyền thuộc về lớp học Ms. Thục TOEIC**")
-st.markdown("---")
+# --- 1. CẤU HÌNH GIAO DIỆN ---
+st.set_page_config(page_title="Luyện nghe TOEIC", page_icon="🎧", layout="centered")
+st.title("Hệ thống Luyện nghe TOEIC - Ms. Thục")
 
-# ==========================================
-# 2. KẾT NỐI GOOGLE SHEETS (BẢN GỐC CỦA BẠN)
-# ==========================================
-# 👇👇👇 BẠN HÃY DÁN NGUYÊN SI ĐOẠN CODE KẾT NỐI CŨ ĐÃ TỪNG CHẠY ĐƯỢC VÀO ĐÂY 👇👇👇
-
-
-
-# 👆👆👆 ======================================================================= 👆👆👆
-
-# Đảm bảo file Excel được mở đúng link này (Biến doc phải khớp với code cũ của bạn)
-doc = gc.open_by_url("https://docs.google.com/spreadsheets/d/1JHynbU_LDlCfPi6budsjOlTa9Hv4zDrajT3CijJilno/edit?usp=sharing")
-
-# ==========================================
-# 3. CỔNG 1: KHAI BÁO DANH TÍNH & BẢO MẬT
-# ==========================================
-lop_hoc = st.selectbox("Chọn Lớp học của bạn:", ["246", "357"])
-
-@st.cache_data(ttl=600)
-def lay_danh_sach_hoc_vien(lop_chon):
-    try:
-        sheet_hv = doc.worksheet("Hocvien")
-        records = sheet_hv.get_all_values()
-        danh_sach = []
-        for row in records[1:]:
-            if len(row) >= 3:
-                lop_trong_sheet = row[0].strip()
-                ten_trong_sheet = row[1].strip()
-                trang_thai = row[2].strip()
-                if lop_trong_sheet == lop_chon and trang_thai == "Đang học":
-                    danh_sach.append(ten_trong_sheet.lower())
-        return danh_sach
-    except Exception as e:
-        return []
-
-danh_sach_hop_le = lay_danh_sach_hoc_vien(lop_hoc)
-ten_nhap_vao = st.text_input("Nhập chính xác Họ và Tên của bạn:")
-
-if ten_nhap_vao:
-    ten_kiem_tra = ten_nhap_vao.strip().lower()
+# --- 2. KẾT NỐI GOOGLE SHEETS ---
+# Yêu cầu file keys.json đặt cùng thư mục với app.py 
+# (Khi đẩy lên mạng sẽ dùng st.secrets, tôi có ghi chú ở cuối bài)
+@st.cache_resource
+@st.cache_resource
+def init_connection():
+    import json
+    scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
     
-    if ten_kiem_tra in danh_sach_hop_le:
-        st.success(f"✅ Xác thực thành công! Chào mừng **{ten_nhap_vao.title()}**.")
-        st.markdown("---")
+    # Lấy chìa khóa bảo mật từ Streamlit Secrets
+    key_dict = json.loads(st.secrets["google_json"])
+    creds = Credentials.from_service_account_info(key_dict, scopes=scope)
+    client = gspread.authorize(creds)
+    
+    sheet_url = "https://docs.google.com/spreadsheets/d/1JHynbU_LDlCfPi6budsjOlTa9Hv4zDrajT3CijJilno/edit?gid=931055085#gid=931055085" 
+    doc = client.open_by_url(sheet_url)
+    return doc
 
-        # ==========================================
-        # 4. CHỌN ĐỀ TỰ ĐỘNG
-        # ==========================================
-        if lop_hoc == "246":
-            danh_sach_de = ["6U", "De1", "De2"]
-        else:
-            danh_sach_de = ["6U", "Test1", "Test2"]
+try:
+    doc = init_connection()
+    sheet_khode = doc.worksheet("KhoDe")
+    sheet_dulieutho = doc.worksheet("DuLieuTho")
+except Exception as e:
+    st.error(f"Lỗi chi tiết: {e}")
+    st.stop()
 
-        ma_de_chon = st.selectbox("Chọn Mã đề:", danh_sach_de)
-        ma_bi_mat = f"{lop_hoc}-{ma_de_chon}"
+# --- 3. THÔNG TIN HỌC VIÊN ---
+st.subheader("1. Thông tin học viên")
+lop = st.radio("Chọn lớp của bạn:", options=["Ca 246", "Ca 357"], horizontal=True)
 
-        def lay_link_audio(ma_tim_kiem):
-            sheet_khode = doc.worksheet("KhoDe")
-            danh_sach_dong = sheet_khode.get_all_values()
-            links = []
-            for row in danh_sach_dong:
-                if row[0].strip() == ma_tim_kiem:
-                    for cell in row[2:]:
-                        if cell.strip() != "":
-                            links.append(cell.strip())
+ten_hoc_vien = st.text_input("Nhập Họ và Tên của bạn:")
+st.caption("🔴 *Lưu ý: Vui lòng nhập đúng chuẩn Họ và Tên đầy đủ có dấu để hệ thống ghi nhận điểm chính xác.*")
+
+# --- 4. TRA CỨU MÃ ĐỀ ---
+st.subheader("2. Bài tập luyện nghe")
+ma_de = st.selectbox("Chọn Mã đề:", ["6U"])
+
+# Khởi tạo Session State để lưu trữ dữ liệu
+if "audio_links" not in st.session_state:
+    st.session_state.audio_links = []
+if "current_made" not in st.session_state:
+    st.session_state.current_made = ""
+
+if ma_de:
+    # Chỉ truy xuất Sheets nếu mã đề thay đổi để tránh quá tải API
+    if ma_de != st.session_state.current_made:
+        with st.spinner("Đang tải đề bài..."):
+            records = sheet_khode.get_all_values()
+            found_links = []
+            for row in records:
+                # Kiểm tra xem dòng đó có dữ liệu không rồi mới đọc Cột A
+                if len(row) > 0 and row[0].strip() == ma_de:
+                    # Lấy các link từ cột B trở đi, bỏ qua các ô trống
+                    found_links = [link.strip() for link in row[1:] if link.strip() != ""]
                     break
-            return links
-
-        found_links = lay_link_audio(ma_bi_mat)
-
-        if len(found_links) > 0:
-            st.success(f"🎉 Đã tải đề thành công! (Gồm {len(found_links)} câu hỏi)")
             
-            # ==========================================
-            # 5. TRẠM KIỂM TRA ÂM THANH
-            # ==========================================
-            st.markdown("### 🎧 Bước 1: Kiểm tra âm thanh")
-            st.info("Vui lòng nghe thử đoạn âm thanh dưới đây và điều chỉnh âm lượng thiết bị cho phù hợp.")
+            st.session_state.audio_links = found_links
+            st.session_state.current_made = ma_de
             
-            # Link file test
-            link_test = "https://drive.google.com/uc?export=download&id=ID_FILE_TEST_CUA_BAN"
-            st.audio(link_test)
-            
-            da_nghe_ro = st.checkbox("✅ Tôi đã nghe rõ âm thanh và sẵn sàng làm bài!")
+            # Reset lượt nghe khi đổi mã đề
+            for key in list(st.session_state.keys()):
+                if key.startswith("play_count_"):
+                    del st.session_state[key]
 
-            # ==========================================
-            # 6. LÀM BÀI VÀ NỘP BÀI
-            # ==========================================
-            if da_nghe_ro:
-                st.markdown("---")
-                st.markdown("### 📝 Bước 2: Bắt đầu làm bài")
-                
-                with st.form("form_lam_bai"):
-                    dap_an_hoc_vien = {}
-                    
-                    for i, link in enumerate(found_links):
-                        so_cau = i + 1
-                        st.markdown(f"**Câu {so_cau}**")
-                        st.audio(link)
-                        
-                        chon = st.radio(
-                            "Chọn đáp án:", 
-                            ["A", "B", "C", "D"], 
-                            key=f"cau_{so_cau}", 
-                            horizontal=True,
-                            index=None
-                        )
-                        dap_an_hoc_vien[f"Câu {so_cau}"] = chon
-                        st.divider()
-                    
-                    nut_nop_bai = st.form_submit_button("Nộp bài ngay", type="primary")
-                    
-                if nut_nop_bai:
-                    so_cau_chua_lam = sum(1 for ans in dap_an_hoc_vien.values() if ans is None)
-                    if so_cau_chua_lam > 0:
-                        st.warning(f"⚠️ Bạn còn {so_cau_chua_lam} câu chưa chọn đáp án. Hãy kiểm tra lại nhé!")
-                    else:
-                        st.balloons()
-                        st.success("Tuyệt vời! Bạn đã nộp bài thành công.")
-                        st.write("Đáp án của bạn:", dap_an_hoc_vien)
-        else:
-            st.info("⏳ Chưa có file nghe cho đề này. Vui lòng báo lại với trung tâm nhé!")
+    links = st.session_state.audio_links
+
+    if not links:
+        st.warning("Không tìm thấy Mã đề này hoặc đề chưa có âm thanh. Vui lòng kiểm tra lại.")
     else:
-        st.error("⛔ Tên của bạn không khớp với danh sách lớp hiện tại, hoặc bạn đã gõ sai chính tả.")
+        st.success(f"Đã tải thành công đề: {ma_de} ({len(links)} câu hỏi)")
+        
+        # Tạo danh sách hứng đáp án
+        dap_an_list = []
+
+        # --- 5. HIỂN THỊ CÂU HỎI VÀ NÚT NGHE ---
+        for i, link in enumerate(links):
+            st.markdown(f"**Câu {i + 1}:**")
+            
+            # Quản lý số lần nghe
+            count_key = f"play_count_{i}"
+            if count_key not in st.session_state:
+                st.session_state[count_key] = 0
+
+            # Cột giao diện cho nút nghe
+            col1, col2 = st.columns([1, 3])
+            
+            with col1:
+                luot_con_lai = 2 - st.session_state[count_key]
+                button_label = f"▶️ Nghe (Còn {luot_con_lai} lần)" if luot_con_lai > 0 else "🚫 Đã hết lượt nghe"
+                
+                # Nút phát âm thanh
+                if st.button(button_label, key=f"btn_play_{i}", disabled=(st.session_state[count_key] >= 2)):
+                    st.session_state[count_key] += 1
+                    # Tiêm mã HTML để phát âm thanh ẩn
+                    audio_html = f"""
+                        <audio autoplay>
+                            <source src="{link}" type="audio/mpeg">
+                        </audio>
+                    """
+                    st.components.v1.html(audio_html, width=0, height=0)
+                    st.rerun()
+
+            with col2:
+                # Ô điền đáp án
+                dap_an = st.text_area(f"Nhập bản dịch/chép chính tả Câu {i + 1}:", key=f"dapan_{i}", height=68, label_visibility="collapsed")
+                dap_an_list.append(dap_an)
+            
+            st.markdown("---")
+
+        # --- 6. NỘP BÀI ---
+        if st.button("📤 Nộp bài", type="primary"):
+            if not ten_hoc_vien:
+                st.error("Vui lòng nhập Họ và Tên trước khi nộp bài!")
+            else:
+                with st.spinner("Đang lưu kết quả..."):
+                    thoi_gian = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                    
+                    # Cấu trúc dòng dữ liệu đẩy lên Sheet
+                    # Mặc định tạo đủ 30 ô đáp án (bạn có thể tăng/giảm số 30 tùy ý)
+                    max_cau_hoi = 30
+                    dap_an_padded = dap_an_list + [""] * (max_cau_hoi - len(dap_an_list))
+                    
+                    row_data = [thoi_gian, lop, ten_hoc_vien, ma_de] + dap_an_padded
+                    
+                    # Đẩy lên Sheet
+                    sheet_dulieutho.append_row(row_data)
+                    
+                    st.success("🎉 Nộp bài thành công! Bạn có thể đóng trình duyệt.")
+                    time.sleep(2)
+                    # Reset Form (Tùy chọn)
+                    st.rerun()

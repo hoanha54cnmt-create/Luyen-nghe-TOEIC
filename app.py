@@ -21,7 +21,7 @@ def init_connection():
     scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
 
 # ĐIỀN ĐƯỜNG LINK HOẶC ID FILE GOOGLE SHEETS CỦA BẠN VÀO ĐÂY:
-doc = gc.open_by_url("ĐƯỜNG_LINK_FILE_EXCEL_CỦA_BẠN") 
+doc = gc.open_by_url("https://docs.google.com/spreadsheets/d/1JHynbU_LDlCfPi6budsjOlTa9Hv4zDrajT3CijJilno/edit?usp=sharing") 
 
 # ==========================================
 # 3. CỔNG 1: KHAI BÁO DANH TÍNH & BẢO MẬT
